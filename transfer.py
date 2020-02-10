@@ -33,6 +33,7 @@ valid_set = datasets.ImageFolder(valid_folder_path, transform = transform)
 valid_loader = torch.utils.data.DataLoader(valid_set, batch_size=batch_size, shuffle=False)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print("device is", device)
 # Move model to the device specified above
 resnext.to(device)
 
