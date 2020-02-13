@@ -59,7 +59,7 @@ model_path = os.path.abspath(sys.argv[4])
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("device is", device)
 # Move model to the device specified above
-resnext.to(device)
+resnext = resnext.to(device)
 
 
 current_weight = resnext.state_dict()["fc.weight"]
@@ -90,7 +90,6 @@ for epoch in range(num_epochs):
     for inputs, labels in train_loader:
         inputs, labels = inputs.to(device), labels.to(device)
         optimizer.zero_grad()
-
         outputs = resnext(inputs)
         _, preds = torch.max(outputs, 1)
         loss = criterion(outputs, labels)
