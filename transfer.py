@@ -12,13 +12,14 @@ import warnings
 warnings.filterwarnings("ignore")
 
 def validate_and_save(model_path:str):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     global labels, outputs, _, best_accuracy
     correct = 0
     total = 0
     with torch.no_grad():
-        for data in valid_loader:
-            images, labels = data
-            outputs = resnext(images)
+        for inputs, labels in valid_loader:
+            inputs, labels = inputs.to(device), labels.to(device)
+            outputs = resnext(inputs)
             _, predicted = torch.max(outputs.data, 1)
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
