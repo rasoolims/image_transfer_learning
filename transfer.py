@@ -20,7 +20,6 @@ transform = transforms.Compose([  # [1]
         std=[0.229, 0.224, 0.225]  # [7]
     )])
 
-batch_size = 256
 
 resnext = models.resnext101_32x8d(pretrained=True)
 
@@ -32,7 +31,9 @@ valid_folder_path = os.path.abspath(sys.argv[2])
 valid_set = datasets.ImageFolder(valid_folder_path, transform = transform)
 valid_loader = torch.utils.data.DataLoader(valid_set, batch_size=batch_size, shuffle=False)
 
-model_path = os.path.abspath(sys.argv[3])
+batch_size = int(sys.argv[3]) #todo use python parser!
+
+model_path = os.path.abspath(sys.argv[4])
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("device is", device)
