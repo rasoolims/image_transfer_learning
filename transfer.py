@@ -23,6 +23,8 @@ transform = transforms.Compose([  # [1]
 
 resnext = models.resnext101_32x8d(pretrained=True)
 
+batch_size = int(sys.argv[3]) #todo use python parser!
+
 train_folder_path = os.path.abspath(sys.argv[1])
 train_set = datasets.ImageFolder(train_folder_path, transform = transform)
 train_loader = torch.utils.data.DataLoader(train_set, batch_size=batch_size, shuffle=True)
@@ -31,7 +33,6 @@ valid_folder_path = os.path.abspath(sys.argv[2])
 valid_set = datasets.ImageFolder(valid_folder_path, transform = transform)
 valid_loader = torch.utils.data.DataLoader(valid_set, batch_size=batch_size, shuffle=False)
 
-batch_size = int(sys.argv[3]) #todo use python parser!
 
 model_path = os.path.abspath(sys.argv[4])
 
