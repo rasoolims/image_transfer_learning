@@ -52,15 +52,7 @@ train_loader = torch.utils.data.DataLoader(train_set, batch_size=batch_size, shu
 valid_folder_path = os.path.abspath(sys.argv[2])
 valid_set = datasets.ImageFolder(valid_folder_path, transform = transform)
 valid_loader = torch.utils.data.DataLoader(valid_set, batch_size=batch_size, shuffle=False)
-
-
 model_path = os.path.abspath(sys.argv[4])
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print("device is", device)
-# Move model to the device specified above
-resnext = resnext.to(device)
-
 
 current_weight = resnext.state_dict()["fc.weight"]
 
@@ -83,7 +75,11 @@ best_accuracy  = -1
 num_steps, running_loss = 0, 0
 no_improvement = 0
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print("device is", device)
 
+# Move model to the device specified above
+resnext = resnext.to(device)
 
 for epoch in range(num_epochs):
     print("training epoch", epoch+1)
