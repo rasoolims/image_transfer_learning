@@ -96,7 +96,7 @@ for epoch in range(num_epochs):
         current_steps+=1
         num_steps+=1
 
-        if current_steps%1==0:
+        if current_steps%100==0:
             print("epoch", epoch, "num_step", num_steps, "running_loss", running_loss/current_steps)
             current_steps, running_loss = 0, 0
             improved = validate_and_save(model_path=model_path)
