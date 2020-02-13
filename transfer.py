@@ -11,6 +11,26 @@ from torch.optim import lr_scheduler
 import warnings
 warnings.filterwarnings("ignore")
 
+def validate_and_save(model_path:str):
+    global labels, outputs, _, best_accuracy
+    correct = 0
+    total = 0
+    with torch.no_grad():
+        for data in valid_loader:
+            images, labels = data
+            outputs = resnext(images)
+            _, predicted = torch.max(outputs.data, 1)
+            total += labels.size(0)
+            correct += (predicted == labels).sum().item()
+    accuracy = 100.0 * correct / total
+    print("current accuracy", accuracy)
+    if accuracy > best_accuracy:
+        best_accuracy = accuracy
+        print("saving best accuracy", best_accuracy)
+        torch.save(resnext, model_path)
+        return True
+    return False # no improved accuracy
+
 transform = transforms.Compose([  # [1]
     transforms.Resize(256),  # [2]
     transforms.CenterCrop(224),  # [3]
@@ -63,25 +83,6 @@ best_accuracy  = -1
 num_steps, running_loss = 0, 0
 no_improvement = 0
 
-def validate_and_save(model_path:str):
-    global labels, outputs, _, best_accuracy
-    correct = 0
-    total = 0
-    with torch.no_grad():
-        for data in valid_loader:
-            images, labels = data
-            outputs = resnext(images)
-            _, predicted = torch.max(outputs.data, 1)
-            total += labels.size(0)
-            correct += (predicted == labels).sum().item()
-    accuracy = 100.0 * correct / total
-    print("current accuracy", accuracy)
-    if accuracy > best_accuracy:
-        best_accuracy = accuracy
-        print("saving best accuracy", best_accuracy)
-        torch.save(resnext, model_path)
-        return True
-    return False # no improved accuracy
 
 
 for epoch in range(num_epochs):
