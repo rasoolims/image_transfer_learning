@@ -32,6 +32,8 @@ valid_folder_path = os.path.abspath(sys.argv[2])
 valid_set = datasets.ImageFolder(valid_folder_path, transform = transform)
 valid_loader = torch.utils.data.DataLoader(valid_set, batch_size=batch_size, shuffle=False)
 
+model_path = os.path.abspath(sys.argv[3])
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("device is", device)
 # Move model to the device specified above
@@ -59,7 +61,7 @@ best_accuracy  = -1
 num_steps, running_loss = 0, 0
 no_improvement = 0
 
-def validate_and_save():
+def validate_and_save(model_path:str):
     global labels, outputs, _, best_accuracy
     correct = 0
     total = 0
@@ -75,7 +77,7 @@ def validate_and_save():
     if accuracy > best_accuracy:
         best_accuracy = accuracy
         print("saving best accuracy", best_accuracy)
-        torch.save(resnext, os.path.abspath(sys.argv[3]))
+        torch.save(resnext, model_path)
         return True
     return False # no improved accuracy
 
@@ -96,10 +98,10 @@ for epoch in range(num_epochs):
 
         if num_steps%100==0:
             print("epoch", epoch, "num_step", num_steps, "running_loss", running_loss/num_steps)
-            improved = validate_and_save()
+            improved = validate_and_save(model_path=model_path)
             no_improvement = 0 if improved else no_improvement+1
             if no_improvement>=100 and epoch>3: # no improvement for a long time, and at least 3 epochs
                 print("no improvement over time--> finish")
                 sys.exit(0)
 
-validate_and_save()
+validate_and_save(model_path=model_path)
