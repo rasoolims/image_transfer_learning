@@ -73,7 +73,7 @@ optimizer = optim.SGD(resnext.parameters(), lr=0.001, momentum=0.9)
 exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
 
 best_accuracy  = -1
-num_steps, running_loss = 0, 0
+num_steps, current_steps, running_loss = 0, 0, 0
 no_improvement = 0
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -93,11 +93,12 @@ for epoch in range(num_epochs):
         loss.backward()
         optimizer.step()
         running_loss += loss.item()
+        current_steps+=1
         num_steps+=1
 
-        if num_steps%1==0:
-            print("epoch", epoch, "num_step", num_steps, "running_loss", running_loss/num_steps)
-            num_steps, running_loss = 0, 0
+        if current_steps%1==0:
+            print("epoch", epoch, "num_step", num_steps, "running_loss", running_loss/current_steps)
+            current_steps, running_loss = 0, 0
             improved = validate_and_save(model_path=model_path)
             no_improvement = 0 if improved else no_improvement+1
             if no_improvement>=100 and epoch>3: # no improvement for a long time, and at least 3 epochs
