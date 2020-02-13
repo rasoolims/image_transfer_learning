@@ -94,8 +94,9 @@ for epoch in range(num_epochs):
         running_loss += loss.item()
         num_steps+=1
 
-        if num_steps%100==0:
+        if num_steps%1==0:
             print("epoch", epoch, "num_step", num_steps, "running_loss", running_loss/num_steps)
+            num_steps, running_loss = 0, 0
             improved = validate_and_save(model_path=model_path)
             no_improvement = 0 if improved else no_improvement+1
             if no_improvement>=100 and epoch>3: # no improvement for a long time, and at least 3 epochs
