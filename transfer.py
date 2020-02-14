@@ -33,14 +33,6 @@ def validate_and_save(model_path: str):
         return True
     return False  # no improved accuracy
 
-def change_learning_rate(optimizer, epoch, original_lr):
-    """
-    Got this from: https://github.com/pytorch/examples/blob/master/imagenet/main.py
-    """
-    lr = original_lr * (0.1 ** (epoch // 30))
-    for param_group in optimizer.param_groups:
-        param_group['lr'] = lr
-
 
 def train_on_pretrained_model(train_folder_path: str, valid_folder_path: str, batch_size: int, model_path: str,
                               freeze_intermediate_layers: bool):
@@ -59,11 +51,14 @@ def train_on_pretrained_model(train_folder_path: str, valid_folder_path: str, ba
 
     resnext.fc = torch.nn.Linear(in_features=current_weight.size()[1], out_features=len(train_set.classes), bias=True)
     resnext.fc.training = True
-    num_epochs = 300
+    num_epochs = 100
     criterion = torch.nn.CrossEntropyLoss()
 
     # Observe that all parameters are being optimized
-    optimizer = optim.SGD(resnext.parameters(), lr=0.1, momentum=0.9, weight_decay=0.0001)
+    optimizer = optim.SGD(resnext.parameters(), lr=0.001, momentum=0.9)
+
+    # Decay LR by a factor of 0.1 every 7 epochs
+    exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
 
     best_accuracy = 0
     num_steps, current_steps, running_loss = 0, 0, 0
@@ -76,7 +71,6 @@ def train_on_pretrained_model(train_folder_path: str, valid_folder_path: str, ba
 
     for epoch in range(num_epochs):
         print("training epoch", epoch + 1)
-        change_learning_rate(optimizer=optimizer, epoch=epoch, original_lr=0.1)
         for inputs, labels in train_loader:
             inputs, labels = inputs.to(device), labels.to(device)
             optimizer.zero_grad()
@@ -88,6 +82,7 @@ def train_on_pretrained_model(train_folder_path: str, valid_folder_path: str, ba
             running_loss += loss.item()
             current_steps += 1
             num_steps += 1
+            exp_lr_scheduler.step()
 
             if current_steps % 100 == 0:
                 print("epoch", epoch, "num_step", num_steps, "running_loss", running_loss / current_steps)
