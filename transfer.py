@@ -12,31 +12,17 @@ import warnings
 warnings.filterwarnings("ignore")
 
 
-def validate_and_save(model_path: str):
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    global labels, outputs, _, best_accuracy
-    correct = 0
-    total = 0
-    with torch.no_grad():
-        for inputs, labels in valid_loader:
-            inputs, labels = inputs.to(device), labels.to(device)
-            outputs = resnext(inputs)
-            _, predicted = torch.max(outputs.data, 1)
-            total += labels.size(0)
-            correct += (predicted == labels).sum().item()
-    accuracy = 100.0 * correct / total
-    print("current accuracy", accuracy)
-    if accuracy > best_accuracy:
-        best_accuracy = accuracy
-        print("saving best accuracy", best_accuracy)
-        torch.save(resnext, model_path)
-        return True
-    return False  # no improved accuracy
-
-
 def train_on_pretrained_model(train_folder_path: str, valid_folder_path: str, batch_size: int, model_path: str,
-                              freeze_intermediate_layers: bool, lr:float):
-    global valid_loader, resnext
+                              freeze_intermediate_layers: bool, lr: float):
+    transform = transforms.Compose([  # [1]
+        transforms.Resize(256),  # [2]
+        transforms.CenterCrop(224),  # [3]
+        transforms.ToTensor(),  # [4]
+        transforms.Normalize(  # [5]
+            mean=[0.485, 0.456, 0.406],  # [6]
+            std=[0.229, 0.224, 0.225]  # [7]
+        )])
+    resnext = models.resnext101_32x8d(pretrained=True)
     train_set = datasets.ImageFolder(train_folder_path, transform=transform)
     train_loader = torch.utils.data.DataLoader(train_set, batch_size=batch_size, shuffle=True)
     valid_set = datasets.ImageFolder(valid_folder_path, transform=transform)
@@ -83,17 +69,33 @@ def train_on_pretrained_model(train_folder_path: str, valid_folder_path: str, ba
             current_steps += 1
             num_steps += 1
 
-
             if current_steps % 100 == 0:
                 print("epoch", epoch, "num_step", num_steps, "running_loss", running_loss / current_steps)
                 current_steps, running_loss = 0, 0
-                improved = validate_and_save(model_path=model_path)
+
+                correct, total = 0, 0
+                with torch.no_grad():
+                    for inputs, labels in valid_loader:
+                        inputs, labels = inputs.to(device), labels.to(device)
+                        outputs = resnext(inputs)
+                        _, predicted = torch.max(outputs.data, 1)
+                        total += labels.size(0)
+                        correct += (predicted == labels).sum().item()
+                accuracy = 100.0 * correct / total
+                print("current accuracy", accuracy)
+                if accuracy > best_accuracy:
+                    best_accuracy = accuracy
+                    print("saving best accuracy", best_accuracy)
+                    torch.save(resnext, model_path)
+                    improved = True
+                else:
+                    improved = False
+
                 no_improvement = 0 if improved else no_improvement + 1
                 if no_improvement >= 100 and epoch > 3:  # no improvement for a long time, and at least 3 epochs
                     print("no improvement over time--> finish")
                     sys.exit(0)
         exp_lr_scheduler.step()
-    validate_and_save(model_path=model_path)
 
 
 if __name__ == "__main__":
@@ -105,17 +107,7 @@ if __name__ == "__main__":
     parser.add_option("--lr", dest="lr", help="Learning rate", type="float", default=0.001)
     parser.add_option("--freeze", dest="freeze", action="store_true",
                       help="Freeze intermediate layers of the pretrained model", default=False)
-    resnext = models.resnext101_32x8d(pretrained=True)
     (options, args) = parser.parse_args()
-
-    transform = transforms.Compose([  # [1]
-        transforms.Resize(256),  # [2]
-        transforms.CenterCrop(224),  # [3]
-        transforms.ToTensor(),  # [4]
-        transforms.Normalize(  # [5]
-            mean=[0.485, 0.456, 0.406],  # [6]
-            std=[0.229, 0.224, 0.225]  # [7]
-        )])
 
     model_path = os.path.abspath(sys.argv[4])
     train_on_pretrained_model(train_folder_path=options.train_folder_path, valid_folder_path=options.valid_folder_path,
