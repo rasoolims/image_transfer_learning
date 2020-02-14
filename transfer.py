@@ -82,7 +82,7 @@ def train_on_pretrained_model(train_folder_path: str, valid_folder_path: str, ba
             running_loss += loss.item()
             current_steps += 1
             num_steps += 1
-            exp_lr_scheduler.step()
+
 
             if current_steps % 100 == 0:
                 print("epoch", epoch, "num_step", num_steps, "running_loss", running_loss / current_steps)
@@ -92,6 +92,7 @@ def train_on_pretrained_model(train_folder_path: str, valid_folder_path: str, ba
                 if no_improvement >= 100 and epoch > 3:  # no improvement for a long time, and at least 3 epochs
                     print("no improvement over time--> finish")
                     sys.exit(0)
+        exp_lr_scheduler.step()
     validate_and_save(model_path=model_path)
 
 
