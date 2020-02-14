@@ -41,10 +41,9 @@ def train_on_pretrained_model(train_folder_path: str, valid_folder_path: str, ba
     criterion = torch.nn.CrossEntropyLoss()
 
     # Observe that all parameters are being optimized
-    optimizer = optim.SGD(resnext.parameters(), lr=lr, momentum=0.9)
+    optimizer = optim.Adam(resnext.parameters(), lr=lr)
 
-    # Decay LR by a factor of 0.1 every 7 epochs
-    exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
+    scheduler = lr_scheduler.ReduceLROnPlateau(optimizer=optimizer)
 
     best_accuracy = 0
     num_steps, current_steps, running_loss = 0, 0, 0
@@ -95,7 +94,7 @@ def train_on_pretrained_model(train_folder_path: str, valid_folder_path: str, ba
                 if no_improvement >= 100 and epoch > 3:  # no improvement for a long time, and at least 3 epochs
                     print("no improvement over time--> finish")
                     sys.exit(0)
-        exp_lr_scheduler.step()
+        scheduler.step()
 
 
 if __name__ == "__main__":
@@ -104,7 +103,7 @@ if __name__ == "__main__":
     parser.add_option("--dev", dest="valid_folder_path", help="Validation data folder", metavar="FILE", default=None)
     parser.add_option("--model", dest="model_path", help="Path to save the model", metavar="FILE", default=None)
     parser.add_option("--batch", dest="batch_size", help="Batch size", type="int", default=64)
-    parser.add_option("--lr", dest="lr", help="Learning rate", type="float", default=0.001)
+    parser.add_option("--lr", dest="lr", help="Learning rate", type="float", default=1e-5)
     parser.add_option("--dim", dest="img_size", help="Image dimension for transformaiton", type="int", default=128)
     parser.add_option("--freeze", dest="freeze", action="store_true",
                       help="Freeze intermediate layers of the pretrained model", default=False)
