@@ -41,6 +41,9 @@ def train_on_pretrained_model(train_folder_path: str, valid_folder_path: str, ba
     train_loader = torch.utils.data.DataLoader(train_set, batch_size=batch_size, shuffle=True)
     valid_set = datasets.ImageFolder(valid_folder_path, transform=transform)
     valid_loader = torch.utils.data.DataLoader(valid_set, batch_size=batch_size, shuffle=False)
+
+    print("number of classes in trainset", len(train_set.classes))
+
     current_weight = resnext.state_dict()["fc.weight"]
 
     if freeze_intermediate_layers:
@@ -57,6 +60,7 @@ def train_on_pretrained_model(train_folder_path: str, valid_folder_path: str, ba
     # Decay LR by a factor of 0.1 every 7 epochs
     exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
 
+    best_accuracy = 0
     num_steps, current_steps, running_loss = 0, 0, 0
     no_improvement = 0
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
