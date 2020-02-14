@@ -35,7 +35,7 @@ def validate_and_save(model_path: str):
 
 
 def train_on_pretrained_model(train_folder_path: str, valid_folder_path: str, batch_size: int, model_path: str,
-                              freeze_intermediate_layers: bool):
+                              freeze_intermediate_layers: bool, lr:float):
     global valid_loader, resnext
     train_set = datasets.ImageFolder(train_folder_path, transform=transform)
     train_loader = torch.utils.data.DataLoader(train_set, batch_size=batch_size, shuffle=True)
@@ -55,7 +55,7 @@ def train_on_pretrained_model(train_folder_path: str, valid_folder_path: str, ba
     criterion = torch.nn.CrossEntropyLoss()
 
     # Observe that all parameters are being optimized
-    optimizer = optim.SGD(resnext.parameters(), lr=0.001, momentum=0.9)
+    optimizer = optim.SGD(resnext.parameters(), lr=lr, momentum=0.9)
 
     # Decay LR by a factor of 0.1 every 7 epochs
     exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
@@ -102,6 +102,7 @@ if __name__ == "__main__":
     parser.add_option("--dev", dest="valid_folder_path", help="Validation data folder", metavar="FILE", default=None)
     parser.add_option("--model", dest="model_path", help="Path to save the model", metavar="FILE", default=None)
     parser.add_option("--batch", dest="batch_size", help="Batch size", type="int", default=64)
+    parser.add_option("--lr", dest="lr", help="Learning rate", type="float", default=0.001)
     parser.add_option("--freeze", dest="freeze", action="store_true",
                       help="Freeze intermediate layers of the pretrained model", default=False)
     resnext = models.resnext101_32x8d(pretrained=True)
@@ -119,4 +120,4 @@ if __name__ == "__main__":
     model_path = os.path.abspath(sys.argv[4])
     train_on_pretrained_model(train_folder_path=options.train_folder_path, valid_folder_path=options.valid_folder_path,
                               batch_size=options.batch_size, model_path=options.model_path,
-                              freeze_intermediate_layers=options.freeze)
+                              freeze_intermediate_layers=options.freeze, lr=options.lr)
