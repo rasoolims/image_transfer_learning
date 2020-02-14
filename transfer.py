@@ -13,9 +13,9 @@ warnings.filterwarnings("ignore")
 
 
 def train_on_pretrained_model(train_folder_path: str, valid_folder_path: str, batch_size: int, model_path: str,
-                              freeze_intermediate_layers: bool, lr: float):
+                              freeze_intermediate_layers: bool, lr: float, img_size: int):
     transform = transforms.Compose([  # [1]
-        transforms.Resize(256),  # [2]
+        transforms.Resize(img_size),  # [2]
         transforms.CenterCrop(224),  # [3]
         transforms.ToTensor(),  # [4]
         transforms.Normalize(  # [5]
@@ -105,6 +105,7 @@ if __name__ == "__main__":
     parser.add_option("--model", dest="model_path", help="Path to save the model", metavar="FILE", default=None)
     parser.add_option("--batch", dest="batch_size", help="Batch size", type="int", default=64)
     parser.add_option("--lr", dest="lr", help="Learning rate", type="float", default=0.001)
+    parser.add_option("--dim", dest="img_size", help="Image dimension for transformaiton", type="int", default=128)
     parser.add_option("--freeze", dest="freeze", action="store_true",
                       help="Freeze intermediate layers of the pretrained model", default=False)
     (options, args) = parser.parse_args()
@@ -112,4 +113,4 @@ if __name__ == "__main__":
     model_path = os.path.abspath(sys.argv[4])
     train_on_pretrained_model(train_folder_path=options.train_folder_path, valid_folder_path=options.valid_folder_path,
                               batch_size=options.batch_size, model_path=options.model_path,
-                              freeze_intermediate_layers=options.freeze, lr=options.lr)
+                              freeze_intermediate_layers=options.freeze, lr=options.lr, img_size=options.img_size)
