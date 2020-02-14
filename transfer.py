@@ -95,6 +95,7 @@ if __name__ == "__main__":
     parser = OptionParser()
     parser.add_option("--train", dest="train_folder_path", help="Training data folder", metavar="FILE", default=None)
     parser.add_option("--dev", dest="valid_folder_path", help="Validation data folder", metavar="FILE", default=None)
+    parser.add_option("--model", dest="model_path", help="Path to save the model", metavar="FILE", default=None)
     parser.add_option("--batch", dest="batch_size", help="Batch size", type="int", default=64)
     parser.add_option("--freeze", dest="freeze", action="store_true",
                       help="Freeze intermediate layers of the pretrained model", default=False)
