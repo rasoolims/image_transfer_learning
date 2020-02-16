@@ -94,7 +94,7 @@ def train_on_pretrained_model(train_folder_path: str, valid_folder_path: str, ba
                 if no_improvement >= 100 and epoch > 3:  # no improvement for a long time, and at least 3 epochs
                     print("no improvement over time--> finish")
                     sys.exit(0)
-        scheduler.step()
+        scheduler.step(accuracy)
 
 
 if __name__ == "__main__":
