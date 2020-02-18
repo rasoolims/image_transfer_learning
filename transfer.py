@@ -12,8 +12,8 @@ from torch.optim import lr_scheduler
 from torchvision import models
 from torchvision import transforms
 
-from image_transfer_learning.dataset import TripletDataSet
-from image_transfer_learning.loss import TripletLoss
+from dataset import TripletDataSet
+from loss import TripletLoss
 
 warnings.filterwarnings("ignore")
 
