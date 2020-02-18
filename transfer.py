@@ -37,10 +37,12 @@ def train_on_pretrained_model(options):
     # Making sure that we do not change the BERT values.
     bert_tensors_in_train.requires_grad = False
 
-    train_triplet_set = TripletDataSet(image_folder=train_set, bert_tensors=bert_tensors_in_train, is_train_data=True)
+    train_triplet_set = TripletDataSet(image_folder=train_set, bert_tensors=bert_tensors_in_train,
+                                       num_neg_samples=options.neg_samples, is_train_data=True)
     train_loader = torch.utils.data.DataLoader(train_triplet_set, batch_size=options.batch_size, shuffle=True)
     valid_set = datasets.ImageFolder(options.valid_folder_path, transform=transform)
-    valid_triplet_set = TripletDataSet(image_folder=valid_set, bert_tensors=bert_tensors_in_train, is_train_data=False)
+    valid_triplet_set = TripletDataSet(image_folder=valid_set, bert_tensors=bert_tensors_in_train,
+                                       num_neg_samples=options.neg_samples, is_train_data=False)
     valid_loader = torch.utils.data.DataLoader(valid_triplet_set, batch_size=options.batch_size, shuffle=False)
 
     print("number of classes in trainset", len(train_set.classes))
@@ -133,6 +135,8 @@ if __name__ == "__main__":
     parser.add_option("--bert", dest="bert_path", help="File that contains bert vectors", metavar="FILE", default=None)
     parser.add_option("--model", dest="model_path", help="Path to save the model", metavar="FILE", default=None)
     parser.add_option("--batch", dest="batch_size", help="Batch size", type="int", default=64)
+    parser.add_option("--sample", dest="neg_samples", help="Number of negative samples for triplet loss", type="int",
+                      default=30)
     parser.add_option("--lr", dest="lr", help="Learning rate", type="float", default=1e-5)
     parser.add_option("--dim", dest="img_size", help="Image dimension for transformation", type="int", default=128)
     parser.add_option("--freeze", dest="freeze_intermediate_layers", action="store_true",

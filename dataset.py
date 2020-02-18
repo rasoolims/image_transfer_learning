@@ -12,12 +12,14 @@ class TripletDataSet(datasets.ImageFolder):
 
     """
 
-    def __init__(self, image_folder: datasets.ImageFolder, bert_tensors: torch.Tensor, is_train_data: bool = True):
+    def __init__(self, image_folder: datasets.ImageFolder, bert_tensors: torch.Tensor, num_neg_samples: int = 30,
+                 is_train_data: bool = True):
         self.image_folder = image_folder
         self.transform = self.image_folder.transform
         self.loader = self.image_folder.loader
         self.is_train_data = is_train_data
         self.bert_tensors = bert_tensors
+        self.num_neg_samples = num_neg_samples
 
         self.targets = self.image_folder.targets
         self.imgs = self.image_folder.imgs
@@ -29,13 +31,12 @@ class TripletDataSet(datasets.ImageFolder):
                                  for label in self.classes}
 
         if not self.is_train_data:
-            self.test_triplets = [np.random.choice(list(self.classes - set([anchor_label]))) for anchor_label in
-                                  self.targets]
+            self.test_triplets = [np.random.choice(list(self.classes - set([anchor_label])), self.num_neg_samples) for anchor_label in self.targets]
 
     def __getitem__(self, index):
         anchor, anchor_label = self.imgs[index], self.targets[index]
         if self.is_train_data:
-            negative_label = np.random.choice(list(self.classes - set([anchor_label])))
+            negative_label = np.random.choice(list(self.classes - set([anchor_label])), self.num_neg_samples)
         else:
             negative_label = self.test_triplets[index]
 
