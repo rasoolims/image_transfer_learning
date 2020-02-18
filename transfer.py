@@ -95,10 +95,8 @@ def train_on_pretrained_model(options):
                         negative = inputs[2].to(device)
 
                         anchor_outputs = resnext(anchor)
-                        positive_outputs = resnext(positive)
-                        negative_outputs = resnext(negative)
+                        loss = criterion(anchor=anchor_outputs, positive=positive, negative=negative)
 
-                        loss = criterion(anchor=anchor_outputs, positive=positive_outputs, negative=negative_outputs)
                         total += anchor_outputs.size(0)
                         loss_value += loss.item()
                 current_loss = 100.0 * loss_value / total
