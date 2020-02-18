@@ -1,14 +1,19 @@
-import torch
-from torchvision import transforms
-import os, sys
-from torchvision import models
-import torchvision.datasets as datasets
-import torch.optim as optim
-from torch.optim import lr_scheduler
+import os
+import pickle
+import sys
+import warnings
 from optparse import OptionParser
+
+import numpy as np
+import torch
+import torch.optim as optim
+import torchvision.datasets as datasets
+from torch.optim import lr_scheduler
+from torchvision import models
+from torchvision import transforms
+
 from image_transfer_learning.dataset import TripletDataSet
 from image_transfer_learning.loss import TripletLoss
-import warnings
 
 warnings.filterwarnings("ignore")
 
@@ -22,23 +27,26 @@ def train_on_pretrained_model(options):
             mean=[0.485, 0.456, 0.406],  # [6]
             std=[0.229, 0.224, 0.225]  # [7]
         )])
-    resnext = models.resnext101_32x8d(pretrained=True)
+    with open(options.bert_path, "rb") as fin:
+        bert_tensors = pickle.load(fin)
+
     train_set = datasets.ImageFolder(options.train_folder_path, transform=transform)
-    train_triplet_set = TripletDataSet(image_folder=train_set, is_train_data=True)
+    embed_dim = bert_tensors[0].shape[0]
+
+    bert_tensors_in_train = torch.tensor(np.array([bert_tensors[int(label)] for label in train_set.classes]))
+    # Making sure that we do not change the BERT values.
+    bert_tensors_in_train.requires_grad = False
+
+    train_triplet_set = TripletDataSet(image_folder=train_set, bert_tensors=bert_tensors_in_train, is_train_data=True)
     train_loader = torch.utils.data.DataLoader(train_triplet_set, batch_size=options.batch_size, shuffle=True)
     valid_set = datasets.ImageFolder(options.valid_folder_path, transform=transform)
-    valid_triplet_set = TripletDataSet(image_folder=valid_set, is_train_data=False)
+    valid_triplet_set = TripletDataSet(image_folder=valid_set, bert_tensors=bert_tensors_in_train, is_train_data=False)
     valid_loader = torch.utils.data.DataLoader(valid_triplet_set, batch_size=options.batch_size, shuffle=False)
 
     print("number of classes in trainset", len(train_set.classes))
 
-    current_weight = resnext.state_dict()["fc.weight"]
+    resnext = init_net(embed_dim, options)
 
-    if options.freeze_intermediate_layers:
-        resnext.eval()
-
-    resnext.fc = torch.nn.Linear(in_features=current_weight.size()[1], out_features=options.embed_dim, bias=False)
-    resnext.fc.training = True
     num_epochs = 100
     criterion = TripletLoss()
 
@@ -61,14 +69,12 @@ def train_on_pretrained_model(options):
         for inputs, labels in train_loader:
             anchor = inputs[0].to(device)
             positive = inputs[1].to(device)
-            negative = inputs[1].to(device)
+            negative = inputs[2].to(device)
 
             optimizer.zero_grad()
             anchor_outputs = resnext(anchor)
-            positive_outputs = resnext(positive)
-            negative_outputs = resnext(negative)
 
-            loss = criterion(anchor=anchor_outputs, positive=positive_outputs, negative=negative_outputs)
+            loss = criterion(anchor=anchor_outputs, positive=positive, negative=negative)
             loss.backward()
             optimizer.step()
             running_loss += loss.item()
@@ -84,7 +90,7 @@ def train_on_pretrained_model(options):
                     for inputs, labels in valid_loader:
                         anchor = inputs[0].to(device)
                         positive = inputs[1].to(device)
-                        negative = inputs[1].to(device)
+                        negative = inputs[2].to(device)
 
                         anchor_outputs = resnext(anchor)
                         positive_outputs = resnext(positive)
@@ -110,15 +116,25 @@ def train_on_pretrained_model(options):
         scheduler.step(-current_loss)
 
 
+def init_net(embed_dim: int, options):
+    resnext = models.resnext101_32x8d(pretrained=True)
+    current_weight = resnext.state_dict()["fc.weight"]
+    if options.freeze_intermediate_layers:
+        resnext.eval()
+    resnext.fc = torch.nn.Linear(in_features=current_weight.size()[1], out_features=embed_dim, bias=False)
+    resnext.fc.training = True
+    return resnext
+
+
 if __name__ == "__main__":
     parser = OptionParser()
     parser.add_option("--train", dest="train_folder_path", help="Training data folder", metavar="FILE", default=None)
     parser.add_option("--dev", dest="valid_folder_path", help="Validation data folder", metavar="FILE", default=None)
+    parser.add_option("--bert", dest="bert_path", help="File that contains bert vectors", metavar="FILE", default=None)
     parser.add_option("--model", dest="model_path", help="Path to save the model", metavar="FILE", default=None)
     parser.add_option("--batch", dest="batch_size", help="Batch size", type="int", default=64)
     parser.add_option("--lr", dest="lr", help="Learning rate", type="float", default=1e-5)
     parser.add_option("--dim", dest="img_size", help="Image dimension for transformation", type="int", default=128)
-    parser.add_option("--embed", dest="embed_dim", help="Projection layer dimension", type="int", default=768)
     parser.add_option("--freeze", dest="freeze_intermediate_layers", action="store_true",
                       help="Freeze intermediate layers of the pretrained model", default=False)
     (options, args) = parser.parse_args()

@@ -1,67 +1,52 @@
-import torchvision.datasets as datasets
 import numpy as np
-from PIL import Image
+import torch
+import torchvision.datasets as datasets
 
 
 class TripletDataSet(datasets.ImageFolder):
     """
     This code is a modification of https://github.com/adambielski/siamese-triplet/blob/master/datasets.py#L79
+    Unlike original code, we use the fixed bert tensors for the examples.
     Train: For each sample (anchor) randomly chooses a positive and negative samples
     Test: Creates fixed triplets for testing
+
     """
 
-    def __init__(self, image_folder: datasets.ImageFolder, is_train_data: bool = True):
+    def __init__(self, image_folder: datasets.ImageFolder, bert_tensors: torch.Tensor, is_train_data: bool = True):
         self.image_folder = image_folder
         self.transform = self.image_folder.transform
         self.loader = self.image_folder.loader
         self.is_train_data = is_train_data
+        self.bert_tensors = bert_tensors
 
         self.targets = self.image_folder.targets
         self.imgs = self.image_folder.imgs
         self.classes = set(self.image_folder.class_to_idx.values())
+        assert len(self.classes) == bert_tensors.size(0)
 
         target_array = np.array(self.targets)
         self.label_to_indices = {label: np.where(target_array == label)[0]
                                  for label in self.classes}
 
         if not self.is_train_data:
-            random_state = np.random.RandomState(29)
-
-            triplets = [[anchor_index,
-                         random_state.choice(self.label_to_indices[anchor_label]),
-                         random_state.choice(self.label_to_indices[
-                                                 np.random.choice(
-                                                     list(self.classes - set([anchor_label]))
-                                                 )
-                                             ])
-                         ]
-                        for anchor_index, anchor_label in enumerate(self.targets)]
-            self.test_triplets = triplets
+            self.test_triplets = [np.random.choice(list(self.classes - set([anchor_label]))) for anchor_label in
+                                  self.targets]
 
     def __getitem__(self, index):
+        anchor, anchor_label = self.imgs[index], self.targets[index]
         if self.is_train_data:
-            anchor, anchor_label = self.imgs[index], self.targets[index]
-            positive_index = index
-            # Second condition to make sure that it does not get stuck in infinite loop.
-            while positive_index == index and len(self.label_to_indices[anchor_label]) > 1:
-                positive_index = np.random.choice(self.label_to_indices[anchor_label])
             negative_label = np.random.choice(list(self.classes - set([anchor_label])))
-            negative_index = np.random.choice(self.label_to_indices[negative_label])
-            positive_img = self.imgs[positive_index]
-            negative_img = self.imgs[negative_index]
         else:
-            anchor = self.imgs[self.test_triplets[index][0]]
-            positive_img = self.imgs[self.test_triplets[index][1]]
-            negative_img = self.imgs[self.test_triplets[index][2]]
+            negative_label = self.test_triplets[index]
 
         anchor = self.loader(anchor[0])
-        positive_img = self.loader(positive_img[0])
-        negative_img = self.loader(negative_img[0])
+
+        positive_bert_embedding = self.bert_tensors[anchor_label]
+        negative_bert_embedding = self.bert_tensors[negative_label]
         if self.transform is not None:
             anchor = self.transform(anchor)
-            positive_img = self.transform(positive_img)
-            negative_img = self.transform(negative_img)
-        return (anchor, positive_img, negative_img), []
+
+        return (anchor, positive_bert_embedding, negative_bert_embedding), []
 
     def __len__(self):
         return len(self.image_folder)
