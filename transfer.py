@@ -6,16 +6,16 @@ import torchvision.datasets as datasets
 import torch.optim as optim
 from torch.optim import lr_scheduler
 from optparse import OptionParser
-
+from image_transfer_learning.dataset import TripletDataSet
+from image_transfer_learning.loss import TripletLoss
 import warnings
 
 warnings.filterwarnings("ignore")
 
 
-def train_on_pretrained_model(train_folder_path: str, valid_folder_path: str, batch_size: int, model_path: str,
-                              freeze_intermediate_layers: bool, lr: float, img_size: int):
+def train_on_pretrained_model(options):
     transform = transforms.Compose([  # [1]
-        transforms.Resize(img_size),  # [2]
+        transforms.Resize(options.img_size),  # [2]
         transforms.CenterCrop(224),  # [3]
         transforms.ToTensor(),  # [4]
         transforms.Normalize(  # [5]
@@ -23,29 +23,31 @@ def train_on_pretrained_model(train_folder_path: str, valid_folder_path: str, ba
             std=[0.229, 0.224, 0.225]  # [7]
         )])
     resnext = models.resnext101_32x8d(pretrained=True)
-    train_set = datasets.ImageFolder(train_folder_path, transform=transform)
-    train_loader = torch.utils.data.DataLoader(train_set, batch_size=batch_size, shuffle=True)
-    valid_set = datasets.ImageFolder(valid_folder_path, transform=transform)
-    valid_loader = torch.utils.data.DataLoader(valid_set, batch_size=batch_size, shuffle=False)
+    train_set = datasets.ImageFolder(options.train_folder_path, transform=transform)
+    train_triplet_set = TripletDataSet(image_folder=train_set, is_train_data=True)
+    train_loader = torch.utils.data.DataLoader(train_triplet_set, batch_size=options.batch_size, shuffle=True)
+    valid_set = datasets.ImageFolder(options.valid_folder_path, transform=transform)
+    valid_triplet_set = TripletDataSet(image_folder=valid_set, is_train_data=False)
+    valid_loader = torch.utils.data.DataLoader(valid_triplet_set, batch_size=options.batch_size, shuffle=False)
 
     print("number of classes in trainset", len(train_set.classes))
 
     current_weight = resnext.state_dict()["fc.weight"]
 
-    if freeze_intermediate_layers:
+    if options.freeze_intermediate_layers:
         resnext.eval()
 
-    resnext.fc = torch.nn.Linear(in_features=current_weight.size()[1], out_features=len(train_set.classes), bias=True)
+    resnext.fc = torch.nn.Linear(in_features=current_weight.size()[1], out_features=options.embed_dim, bias=False)
     resnext.fc.training = True
     num_epochs = 100
-    criterion = torch.nn.CrossEntropyLoss()
+    criterion = TripletLoss()
 
     # Observe that all parameters are being optimized
-    optimizer = optim.Adam(resnext.parameters(), lr=lr)
+    optimizer = optim.Adam(resnext.parameters(), lr=options.lr)
 
     scheduler = lr_scheduler.ReduceLROnPlateau(optimizer=optimizer)
 
-    best_accuracy = 0
+    best_loss = float("-inf")
     num_steps, current_steps, running_loss = 0, 0, 0
     no_improvement = 0
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -57,11 +59,16 @@ def train_on_pretrained_model(train_folder_path: str, valid_folder_path: str, ba
     for epoch in range(num_epochs):
         print("training epoch", epoch + 1)
         for inputs, labels in train_loader:
-            inputs, labels = inputs.to(device), labels.to(device)
+            anchor = inputs[0].to(device)
+            positive = inputs[1].to(device)
+            negative = inputs[1].to(device)
+
             optimizer.zero_grad()
-            outputs = resnext(inputs)
-            _, preds = torch.max(outputs, 1)
-            loss = criterion(outputs, labels)
+            anchor_outputs = resnext(anchor)
+            positive_outputs = resnext(positive)
+            negative_outputs = resnext(negative)
+
+            loss = criterion(anchor=anchor_outputs, positive=positive_outputs, negative=negative_outputs)
             loss.backward()
             optimizer.step()
             running_loss += loss.item()
@@ -72,19 +79,25 @@ def train_on_pretrained_model(train_folder_path: str, valid_folder_path: str, ba
                 print("epoch", epoch, "num_step", num_steps, "running_loss", running_loss / current_steps)
                 current_steps, running_loss = 0, 0
 
-                correct, total = 0, 0
+                loss_value, total = 0, 0
                 with torch.no_grad():
                     for inputs, labels in valid_loader:
-                        inputs, labels = inputs.to(device), labels.to(device)
-                        outputs = resnext(inputs)
-                        _, predicted = torch.max(outputs.data, 1)
-                        total += labels.size(0)
-                        correct += (predicted == labels).sum().item()
-                accuracy = 100.0 * correct / total
-                print("current accuracy", accuracy)
-                if accuracy > best_accuracy:
-                    best_accuracy = accuracy
-                    print("saving best accuracy", best_accuracy)
+                        anchor = inputs[0].to(device)
+                        positive = inputs[1].to(device)
+                        negative = inputs[1].to(device)
+
+                        anchor_outputs = resnext(anchor)
+                        positive_outputs = resnext(positive)
+                        negative_outputs = resnext(negative)
+
+                        loss = criterion(anchor=anchor_outputs, positive=positive_outputs, negative=negative_outputs)
+                        total += anchor_outputs.size(0)
+                        loss_value += loss.item()
+                current_loss = 100.0 * loss_value / total
+                print("current dev loss", current_loss)
+                if current_loss < best_loss:
+                    best_loss = current_loss
+                    print("saving best dev loss", best_loss)
                     torch.save(resnext, model_path)
                     improved = True
                 else:
@@ -94,7 +107,7 @@ def train_on_pretrained_model(train_folder_path: str, valid_folder_path: str, ba
                 if no_improvement >= 100 and epoch > 3:  # no improvement for a long time, and at least 3 epochs
                     print("no improvement over time--> finish")
                     sys.exit(0)
-        scheduler.step(accuracy)
+        scheduler.step(-current_loss)
 
 
 if __name__ == "__main__":
@@ -104,12 +117,11 @@ if __name__ == "__main__":
     parser.add_option("--model", dest="model_path", help="Path to save the model", metavar="FILE", default=None)
     parser.add_option("--batch", dest="batch_size", help="Batch size", type="int", default=64)
     parser.add_option("--lr", dest="lr", help="Learning rate", type="float", default=1e-5)
-    parser.add_option("--dim", dest="img_size", help="Image dimension for transformaiton", type="int", default=128)
-    parser.add_option("--freeze", dest="freeze", action="store_true",
+    parser.add_option("--dim", dest="img_size", help="Image dimension for transformation", type="int", default=128)
+    parser.add_option("--embed", dest="embed_dim", help="Projection layer dimension", type="int", default=768)
+    parser.add_option("--freeze", dest="freeze_intermediate_layers", action="store_true",
                       help="Freeze intermediate layers of the pretrained model", default=False)
     (options, args) = parser.parse_args()
 
     model_path = os.path.abspath(sys.argv[4])
-    train_on_pretrained_model(train_folder_path=options.train_folder_path, valid_folder_path=options.valid_folder_path,
-                              batch_size=options.batch_size, model_path=options.model_path,
-                              freeze_intermediate_layers=options.freeze, lr=options.lr, img_size=options.img_size)
+    train_on_pretrained_model(options=options)
