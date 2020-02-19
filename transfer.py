@@ -46,6 +46,10 @@ def train_on_pretrained_model(options):
     valid_loader = torch.utils.data.DataLoader(valid_triplet_set, batch_size=options.batch_size, shuffle=False)
 
     print("number of classes in trainset", len(train_set.classes))
+    print("saving the BERT tensors")
+    with open(options.model_path+".configs", "wb") as fout:
+        pickle.dump((bert_tensors_in_train, train_set.class_to_idx), fout, protocol=pickle.HIGHEST_PROTOCOL)
+
 
     resnext = init_net(embed_dim, options)
 
@@ -57,7 +61,7 @@ def train_on_pretrained_model(options):
 
     scheduler = lr_scheduler.ReduceLROnPlateau(optimizer=optimizer)
 
-    best_loss = float("-inf")
+    best_loss = float("inf")
     num_steps, current_steps, running_loss = 0, 0, 0
     no_improvement = 0
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
