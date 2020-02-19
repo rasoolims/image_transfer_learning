@@ -59,7 +59,7 @@ def train_on_pretrained_model(options):
     print("number of classes in trainset", len(train_set.classes))
     print("saving the BERT tensors")
     with open(options.model_path + ".configs", "wb") as fout:
-        pickle.dump((bert_tensors_in_train, train_set.class_to_idx), fout, protocol=pickle.HIGHEST_PROTOCOL)
+        pickle.dump((bert_tensors_in_train, train_set.class_to_idx, options.img_size), fout)
 
     resnext = init_net(embed_dim, options)
 
@@ -141,7 +141,7 @@ if __name__ == "__main__":
     parser.add_option("--dev", dest="valid_folder_path", help="Validation data folder", metavar="FILE", default=None)
     parser.add_option("--bert", dest="bert_path", help="File that contains bert vectors", metavar="FILE", default=None)
     parser.add_option("--model", dest="model_path", help="Path to save the model", metavar="FILE", default=None)
-    parser.add_option("--batch", dest="batch_size", help="Batch size", type="int", default=64)
+    parser.add_option("--batch", dest="batch_size", help="Batch size", type="int", default=32)
     parser.add_option("--sample", dest="neg_samples", help="Number of negative samples for triplet loss", type="int",
                       default=30)
     parser.add_option("--lr", dest="lr", help="Learning rate", type="float", default=1e-5)
