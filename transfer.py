@@ -1,21 +1,32 @@
-import os
 import pickle
 import sys
 import warnings
 from optparse import OptionParser
 
+import network
 import numpy as np
 import torch
 import torch.optim as optim
 import torchvision.datasets as datasets
+from dataset import TripletDataSet
+from loss import TripletLoss
 from torch.optim import lr_scheduler
 from torchvision import models
 from torchvision import transforms
 
-from dataset import TripletDataSet
-from loss import TripletLoss
-
 warnings.filterwarnings("ignore")
+
+
+def init_net(embed_dim: int, options):
+    resnext = models.resnext101_32x8d(pretrained=True)
+    resnext.__class__ = network.ResnetWithDropout
+    resnext.dropout = options.dropout
+    current_weight = resnext.state_dict()["fc.weight"]
+    if options.freeze_intermediate_layers:
+        resnext.eval()
+    resnext.fc = torch.nn.Linear(in_features=current_weight.size()[1], out_features=embed_dim, bias=False)
+    resnext.fc.training = True
+    return resnext
 
 
 def train_on_pretrained_model(options):
@@ -47,9 +58,8 @@ def train_on_pretrained_model(options):
 
     print("number of classes in trainset", len(train_set.classes))
     print("saving the BERT tensors")
-    with open(options.model_path+".configs", "wb") as fout:
+    with open(options.model_path + ".configs", "wb") as fout:
         pickle.dump((bert_tensors_in_train, train_set.class_to_idx), fout, protocol=pickle.HIGHEST_PROTOCOL)
-
 
     resnext = init_net(embed_dim, options)
 
@@ -93,6 +103,8 @@ def train_on_pretrained_model(options):
 
                 loss_value, total = 0, 0
                 with torch.no_grad():
+                    resnext.training = False
+
                     for inputs, labels in valid_loader:
                         anchor = inputs[0].to(device)
                         positive = inputs[1].to(device)
@@ -117,17 +129,10 @@ def train_on_pretrained_model(options):
                 if no_improvement >= 100 and epoch > 3:  # no improvement for a long time, and at least 3 epochs
                     print("no improvement over time--> finish")
                     sys.exit(0)
+
+            resnext.training = True
+
         scheduler.step(-current_loss)
-
-
-def init_net(embed_dim: int, options):
-    resnext = models.resnext101_32x8d(pretrained=True)
-    current_weight = resnext.state_dict()["fc.weight"]
-    if options.freeze_intermediate_layers:
-        resnext.eval()
-    resnext.fc = torch.nn.Linear(in_features=current_weight.size()[1], out_features=embed_dim, bias=False)
-    resnext.fc.training = True
-    return resnext
 
 
 if __name__ == "__main__":
@@ -140,6 +145,7 @@ if __name__ == "__main__":
     parser.add_option("--sample", dest="neg_samples", help="Number of negative samples for triplet loss", type="int",
                       default=30)
     parser.add_option("--lr", dest="lr", help="Learning rate", type="float", default=1e-5)
+    parser.add_option("--dropout", dest="dropout", help="Dropout", type="float", default=0.5)
     parser.add_option("--dim", dest="img_size", help="Image dimension for transformation", type="int", default=128)
     parser.add_option("--freeze", dest="freeze_intermediate_layers", action="store_true",
                       help="Freeze intermediate layers of the pretrained model", default=False)
