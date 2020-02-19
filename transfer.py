@@ -151,4 +151,5 @@ if __name__ == "__main__":
                       help="Freeze intermediate layers of the pretrained model", default=False)
     (options, args) = parser.parse_args()
 
+    print(options)
     train_on_pretrained_model(options=options)
