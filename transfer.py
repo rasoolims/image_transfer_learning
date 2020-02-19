@@ -108,7 +108,7 @@ def train_on_pretrained_model(options):
                 if current_loss < best_loss:
                     best_loss = current_loss
                     print("saving best dev loss", best_loss)
-                    torch.save(resnext, model_path)
+                    torch.save(resnext, options.model_path)
                     improved = True
                 else:
                     improved = False
@@ -145,5 +145,4 @@ if __name__ == "__main__":
                       help="Freeze intermediate layers of the pretrained model", default=False)
     (options, args) = parser.parse_args()
 
-    model_path = os.path.abspath(sys.argv[4])
     train_on_pretrained_model(options=options)
