@@ -71,9 +71,9 @@ if __name__ == "__main__":
             outputs = model(inputs)
             # Using negative distances in order to get argmin
             neg_distances = -pairwise_distances(outputs, bert_tensors_in_train)
-            topk = neg_distances.topk(k=5, dim=1)[1].numpy()
+            topk = neg_distances.topk(k=5, dim=1)[1].cpu().numpy()
             top1 = topk[:, 0]
-            all += labels.size(0)
+            all += labels.numpy().size(0)
             labels = labels.numpy()
 
             for i, label in enumerate(labels):
