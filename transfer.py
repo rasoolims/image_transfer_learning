@@ -18,15 +18,15 @@ warnings.filterwarnings("ignore")
 
 
 def init_net(embed_dim: int, options):
-    resnext = models.resnext101_32x8d(pretrained=True)
-    resnext.__class__ = network.ResnetWithDropout
-    resnext.dropout = options.dropout
-    current_weight = resnext.state_dict()["fc.weight"]
+    model = models.resnext101_32x8d(pretrained=True)
+    model.__class__ = network.ResnetWithDropout
+    model.dropout = options.dropout
+    current_weight = model.state_dict()["fc.weight"]
     if options.freeze_intermediate_layers:
-        resnext.eval()
-    resnext.fc = torch.nn.Linear(in_features=current_weight.size()[1], out_features=embed_dim, bias=False)
-    resnext.fc.training = True
-    return resnext
+        model.eval()
+    model.fc = torch.nn.Linear(in_features=current_weight.size()[1], out_features=embed_dim, bias=False)
+    model.fc.training = True
+    return model
 
 
 def train_on_pretrained_model(options):
@@ -61,13 +61,13 @@ def train_on_pretrained_model(options):
     with open(options.model_path + ".configs", "wb") as fout:
         pickle.dump((bert_tensors_in_train, train_set.class_to_idx, options.img_size), fout)
 
-    resnext = init_net(embed_dim, options)
+    model = init_net(embed_dim, options)
 
     num_epochs = 100
     criterion = TripletLoss()
 
     # Observe that all parameters are being optimized
-    optimizer = optim.Adam(resnext.parameters(), lr=options.lr)
+    optimizer = optim.Adam(model.parameters(), lr=options.lr)
 
     scheduler = lr_scheduler.ReduceLROnPlateau(optimizer=optimizer)
 
@@ -78,7 +78,7 @@ def train_on_pretrained_model(options):
 
     # Move model to the device specified above
     print("device is", device)
-    resnext = resnext.to(device)
+    model = model.to(device)
 
     for epoch in range(num_epochs):
         print("training epoch", epoch + 1)
@@ -88,7 +88,7 @@ def train_on_pretrained_model(options):
             negative = inputs[2].to(device)
 
             optimizer.zero_grad()
-            anchor_outputs = resnext(anchor)
+            anchor_outputs = model(anchor)
 
             loss = criterion(anchor=anchor_outputs, positive=positive, negative=negative)
             loss.backward()
@@ -103,14 +103,14 @@ def train_on_pretrained_model(options):
 
                 loss_value, total = 0, 0
                 with torch.no_grad():
-                    resnext.training = False
+                    model.training = False
 
                     for inputs, labels in valid_loader:
                         anchor = inputs[0].to(device)
                         positive = inputs[1].to(device)
                         negative = inputs[2].to(device)
 
-                        anchor_outputs = resnext(anchor)
+                        anchor_outputs = model(anchor)
                         loss = criterion(anchor=anchor_outputs, positive=positive, negative=negative)
 
                         total += anchor_outputs.size(0)
@@ -120,7 +120,7 @@ def train_on_pretrained_model(options):
                 if current_loss < best_loss:
                     best_loss = current_loss
                     print("saving best dev loss", best_loss)
-                    torch.save(resnext, options.model_path)
+                    torch.save(model, options.model_path)
                     improved = True
                 else:
                     improved = False
@@ -130,7 +130,7 @@ def train_on_pretrained_model(options):
                     print("no improvement over time--> finish")
                     sys.exit(0)
 
-            resnext.training = True
+            model.training = True
 
         scheduler.step(-current_loss)
 
