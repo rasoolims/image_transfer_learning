@@ -82,10 +82,10 @@ if __name__ == "__main__":
                 label = int(label)
                 if first == label:
                     top_one_dict[label] += 1
-                    top_five += 1
+                    top_one += 1
                 if label in top5:
                     top_five_dict[label] += 1
-                    top_one += 1
+                    top_five += 1
                 all_dict[label] += 1
                 all += 1
     print("top_1", round(100.0 * top_one / all, 2), "top_5", round(100.0 * top_five / all, 2))
