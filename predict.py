@@ -56,6 +56,7 @@ if __name__ == "__main__":
     input_set = datasets.ImageFolder(options.input_path, transform=transform)
     input_loader = torch.utils.data.DataLoader(input_set, batch_size=options.batch_size, shuffle=False)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    bert_tensors_in_train = bert_tensors_in_train.to(device)
 
     top_one, top_five, all = 0, 0, 0
 
