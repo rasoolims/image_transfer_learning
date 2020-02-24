@@ -81,6 +81,10 @@ def train_on_pretrained_model(options):
 
     # Move model to the device specified above
     print("device is", device)
+    if torch.cuda.device_count() > 1:
+        print("Let's use", torch.cuda.device_count(), "GPUs!")
+        model = torch.nn.DataParallel(model)
+
     model = model.to(device)
 
     for epoch in range(num_epochs):
