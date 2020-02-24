@@ -18,7 +18,7 @@ warnings.filterwarnings("ignore")
 
 
 def init_net(embed_dim: int, options):
-    model = models.densenet169(pretrained=True)
+    model = models.densenet161(pretrained=True)
     model.__class__ = network.DenseNetWithDropout
     model.dropout = options.dropout
     if options.freeze_intermediate_layers:
