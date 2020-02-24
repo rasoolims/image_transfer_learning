@@ -54,6 +54,7 @@ def train_on_pretrained_model(options):
                                        num_neg_samples=options.neg_samples, is_train_data=True)
     train_loader = torch.utils.data.DataLoader(train_triplet_set, batch_size=options.batch_size, shuffle=True)
     valid_set = datasets.ImageFolder(options.valid_folder_path, transform=transform)
+    print("size of original valid_set", len(valid_set.imgs))
     valid_triplet_set = TripletDataSet(image_folder=valid_set, bert_tensors=bert_tensors_in_train,
                                        num_neg_samples=options.neg_samples, is_train_data=False)
     valid_loader = torch.utils.data.DataLoader(valid_triplet_set, batch_size=options.batch_size, shuffle=False)
