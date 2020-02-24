@@ -43,6 +43,7 @@ def train_on_pretrained_model(options):
     print("loaded bert tensors of size", len(bert_tensors))
 
     train_set = datasets.ImageFolder(options.train_folder_path, transform=transform)
+    print("size of original train_set", len(train_set.imgs))
     embed_dim = bert_tensors[0].shape[0]
 
     bert_tensors_in_train = torch.tensor(np.array([bert_tensors[int(label)] for label in train_set.classes]))
