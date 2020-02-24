@@ -81,9 +81,9 @@ def train_on_pretrained_model(options):
 
     # Move model to the device specified above
     print("device is", device)
-    n_gpu = torch.cuda.device_count()
+    num_gpu = torch.cuda.device_count()
     if num_gpu > 1:
-        print("Let's use", torch.cuda.device_count(), "GPUs!")
+        print("Let's use", num_gpu, "GPUs!")
         model = torch.nn.DataParallel(model)
 
     model = model.to(device)
@@ -101,7 +101,7 @@ def train_on_pretrained_model(options):
             loss = criterion(anchor=anchor_outputs, positive=positive, negative=negative)
             loss.backward()
             optimizer.step()
-            if n_gpu > 1:
+            if num_gpu > 1:
                 loss = loss.mean()
             running_loss += loss.item()
             current_steps += 1
