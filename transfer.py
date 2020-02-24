@@ -40,6 +40,7 @@ def train_on_pretrained_model(options):
         )])
     with open(options.bert_path, "rb") as fin:
         bert_tensors = pickle.load(fin)
+    print("loaded bert tensors of size", len(bert_tensors))
 
     train_set = datasets.ImageFolder(options.train_folder_path, transform=transform)
     embed_dim = bert_tensors[0].shape[0]
