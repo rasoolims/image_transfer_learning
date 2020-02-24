@@ -18,14 +18,14 @@ warnings.filterwarnings("ignore")
 
 
 def init_net(embed_dim: int, options):
-    model = models.resnext101_32x8d(pretrained=True)
-    model.__class__ = network.ResnetWithDropout
+    model = models.densenet121(pretrained=True)
+    model.__class__ = network.DenseNetWithDropout
     model.dropout = options.dropout
-    current_weight = model.state_dict()["fc.weight"]
     if options.freeze_intermediate_layers:
         model.eval()
-    model.fc = torch.nn.Linear(in_features=current_weight.size()[1], out_features=embed_dim, bias=False)
-    model.fc.training = True
+    in_features = model.classifier.in_features
+    model.classifier = torch.nn.Linear(in_features=in_features, out_features=embed_dim, bias=False)
+    model.classifier.training = True
     return model
 
 

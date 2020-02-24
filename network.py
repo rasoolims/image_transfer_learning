@@ -3,25 +3,13 @@ import torch.nn.functional as F
 from torchvision import models
 
 
-class ResnetWithDropout(models.ResNet):
-    def _forward_impl(self, x):
-        # See note [TorchScript super()]
-        x = self.conv1(x)
-        x = self.bn1(x)
-        x = self.relu(x)
-        x = self.maxpool(x)
-
-        x = self.layer1(x)
-        x = self.layer2(x)
-        x = self.layer3(x)
-        x = self.layer4(x)
-
-        x = self.avgpool(x)
-        x = torch.flatten(x, 1)
-
+class DenseNetWithDropout(models.DenseNet):
+    def forward(self, x):
+        features = self.features(x)
+        out = F.relu(features, inplace=True)
+        out = F.adaptive_avg_pool2d(out, (1, 1))
+        out = torch.flatten(out, 1)
         if self.training and self.dropout > 0:
-            x = F.dropout(x, p=self.dropout)
-
-        x = self.fc(x)
-
-        return x
+            out = F.dropout(out, p=self.dropout)
+        out = self.classifier(out)
+        return out
