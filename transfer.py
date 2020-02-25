@@ -156,7 +156,7 @@ if __name__ == "__main__":
                       default=30)
     parser.add_option("--lr", dest="lr", help="Learning rate", type="float", default=1e-5)
     parser.add_option("--dropout", dest="dropout", help="Dropout", type="float", default=0.5)
-    parser.add_option("--dim", dest="img_size", help="Image dimension for transformation", type="int", default=128)
+    parser.add_option("--dim", dest="img_size", help="Image dimension for transformation", type="int", default=256)
     parser.add_option("--freeze", dest="freeze_intermediate_layers", action="store_true",
                       help="Freeze intermediate layers of the pretrained model", default=False)
     (options, args) = parser.parse_args()
